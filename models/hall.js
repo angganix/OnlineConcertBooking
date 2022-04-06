@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         as: "concert",
         foreignKey: "concert_id",
       });
+
+      models.Hall.hasMany(models.Ticket, {
+        as: "tickets",
+        foreignKey: "hall_id",
+      });
     }
   }
   Hall.init(

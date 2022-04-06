@@ -20,7 +20,16 @@ module.exports = {
       const offset = (page - 1) * limit;
 
       const data = await Concert.findAndCountAll({
-        include: ["halls"],
+        include: [
+          {
+            association: "halls",
+            include: [
+              {
+                association: "tickets",
+              },
+            ],
+          },
+        ],
         order: [[orderby, orderdir]],
         limit: Number(limit),
         offset: offset,

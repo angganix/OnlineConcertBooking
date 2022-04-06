@@ -17,6 +17,16 @@ module.exports = {
       sold: {
         type: Sequelize.BOOLEAN,
       },
+      hall_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: {
+            tableName: "Halls",
+          },
+          key: "id",
+        },
+        allowNull: false,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,

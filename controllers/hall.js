@@ -1,4 +1,4 @@
-const { Hall } = require("../models");
+const { Hall, Ticket } = require("../models");
 const Validator = require("fastest-validator");
 const moment = require("moment");
 const formValidator = new Validator();
@@ -6,6 +6,7 @@ const formValidator = new Validator();
 const formValidation = {
   name: { type: "string" },
   quota: { type: "number" },
+  price: { type: "number" },
 };
 
 module.exports = {
@@ -20,7 +21,7 @@ module.exports = {
       const offset = (page - 1) * limit;
 
       const data = await Hall.findAndCountAll({
-        include: ["concert"],
+        include: ["concert", "tickets"],
         order: [[orderby, orderdir]],
         limit: Number(limit),
         offset: offset,
@@ -48,7 +49,7 @@ module.exports = {
         throw new Error("Forbidden request!");
       }
 
-      const data = await Hall.findByPk(id, { include: ["concert"] });
+      const data = await Hall.findByPk(id, { include: ["concert", "tickets"] });
 
       if (!data) {
         throw new Error(`Failed to fetch data with id: ${id}`);
@@ -61,7 +62,7 @@ module.exports = {
   },
   create: async (req, res, next) => {
     try {
-      const { name, quota, concert_id } = req.body;
+      const { name, quota, concert_id, price } = req.body;
 
       const validation = formValidator.validate(req.body, formValidation);
       if (validation?.length) {
@@ -71,11 +72,34 @@ module.exports = {
         });
       }
 
-      const data = await Hall.create({
-        name: name,
-        quota: Number(quota),
-        concert_id: Number(concert_id),
-      });
+      const data = await Hall.create(
+        {
+          name: name,
+          quota: Number(quota),
+          concert_id: Number(concert_id),
+          /**
+           * membuat tiket masal
+           * berdasarkan banyaknya quota
+           * @returns ticket data
+           */
+          tickets: Array(quota)
+            .fill(1)
+            .map((x, y) => {
+              return {
+                seat_number: x + y,
+                price: Number(price),
+                sold: false,
+              };
+            }),
+        },
+        {
+          include: [
+            {
+              association: "tickets",
+            },
+          ],
+        }
+      );
 
       if (!data) {
         throw new Error("Failed insert data!");
@@ -83,7 +107,9 @@ module.exports = {
 
       return res.status(201).json({
         status: true,
-        data: await Hall.findByPk(data?.id, { include: ["concert"] }),
+        data: await Hall.findByPk(data?.id, {
+          include: ["concert", "tickets"],
+        }),
       });
     } catch (error) {
       next(error);
