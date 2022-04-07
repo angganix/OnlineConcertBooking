@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const Validator = require("fastest-validator");
 const bcrypt = require("bcrypt");
+const { Op } = require("sequelize");
 const formValidator = new Validator();
 
 const insertValidation = {
@@ -8,7 +9,6 @@ const insertValidation = {
   fullname: { type: "string" },
   email: { type: "email" },
   password: { type: "string", min: 6 },
-  role: { type: "string" },
 };
 
 const updateValidation = {
@@ -20,6 +20,13 @@ const updateValidation = {
 const dataAssociation = [{ association: "user_orders" }];
 
 module.exports = {
+  /**
+   * Get User List
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
+   * @returns
+   */
   list: async (req, res, next) => {
     try {
       const {
@@ -51,6 +58,13 @@ module.exports = {
       next(error);
     }
   },
+  /**
+   * Create new user
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
+   * @returns
+   */
   create: async (req, res, next) => {
     try {
       const {
@@ -70,13 +84,23 @@ module.exports = {
         });
       }
 
-      // check if username or email already in database
-      const existCheck = await User.findOne({
-        where: { username: username, email: email },
+      // check if username already in database
+      const existsUsername = await User.findOne({
+        where: { username: username },
       });
-      if (existCheck) {
+      if (existsUsername) {
         throw new Error(
-          `Username: ${existCheck} or Email: ${existCheck} already exists!`
+          `[Exists] Username: ${existsUsername?.username} already exists!`
+        );
+      }
+
+      // check if email already in database
+      const existsEmail = await User.findOne({
+        where: { email: email },
+      });
+      if (existsEmail) {
+        throw new Error(
+          `[Exists] Email: ${existsEmail?.email} already exists!`
         );
       }
 
@@ -96,6 +120,34 @@ module.exports = {
       return res.status(201).json({
         status: true,
         data: await User.findByPk(data?.id, { include: dataAssociation }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  /**
+   * Delete user by id
+   * @param {*} req
+   * @param {*} res
+   * @param {*} next
+   * @returns
+   */
+  delete: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        throw new Error("Forbidden request!");
+      }
+
+      const deleteData = await User.destroy({
+        where: { id: id },
+      });
+      if (!deleteData) {
+        throw new Error(`Failed delete data with id ${id}`);
+      }
+
+      return res.json({
+        status: true,
       });
     } catch (error) {
       next(error);

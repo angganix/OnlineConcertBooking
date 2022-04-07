@@ -1,10 +1,9 @@
-const { Order } = require("../models");
+const { Order, Ticket } = require("../models");
 const Validator = require("fastest-validator");
 const moment = require("moment");
 const formValidator = new Validator();
 
 const formValidation = {
-  concert_id: { type: "number" },
   detail_orders: { type: "array", min: 1 },
 };
 
@@ -14,6 +13,9 @@ const dataAssociation = [
     include: {
       association: "ticket",
     },
+  },
+  {
+    association: "user",
   },
 ];
 
@@ -28,7 +30,19 @@ module.exports = {
       } = req.query;
       const offset = (page - 1) * limit;
 
+      let whereClause = {};
+
+      /**
+       * Jika yang melakukan request
+       * adalah customer, tampilkan semua order
+       * hanya milik customer
+       */
+      if (req.user?.role === "CUSTOMER") {
+        whereClause.user_id = req.user?.id;
+      }
+
       const data = await Order.findAndCountAll({
+        where: whereClause,
         include: dataAssociation,
         order: [[orderby, orderdir]],
         limit: Number(limit),
@@ -72,7 +86,8 @@ module.exports = {
   },
   create: async (req, res, next) => {
     try {
-      const { concert_id, detail_orders } = req.body;
+      const { id: user_id } = req.user;
+      const { detail_orders } = req.body;
 
       const validation = formValidator.validate(req.body, formValidation);
       if (validation?.length) {
@@ -84,13 +99,13 @@ module.exports = {
 
       const data = await Order.create(
         {
-          purchase_time: moment().format("YYYY-MM-DD HH:mm:ss"),
-          payment_status: "BELUM BAYAR",
-          concert_id: concert_id,
+          purchaseTime: moment().format("YYYY-MM-DD HH:mm:ss"),
+          paymentStatus: "BELUM BAYAR",
+          user_id: user_id,
           detail_orders: detail_orders?.map((detail) => {
             return {
               ticket_id: detail.ticket_id,
-              person_name: detail.person_name,
+              personName: detail.person_name,
             };
           }),
         },
@@ -107,9 +122,52 @@ module.exports = {
         throw new Error("Failed insert data!");
       }
 
+      detail_orders.forEach((detail) => {
+        Ticket.update(
+          {
+            sold: true,
+          },
+          {
+            where: {
+              id: detail?.ticket_id,
+            },
+          }
+        );
+      });
+
       return res.status(201).json({
         status: true,
         data: await Order.findByPk(data?.id, { include: dataAssociation }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  payorder: async (req, res, next) => {
+    try {
+      const { id: user_id } = req.user;
+      const { id } = req.params;
+
+      if (!user_id) {
+        throw new Error(`Forbidden request!`);
+      }
+
+      const payOrder = await Order.update(
+        {
+          paymentStatus: "DIBAYAR",
+        },
+        {
+          where: { id: id },
+        }
+      );
+
+      if (!payOrder) {
+        throw new Error(`Gagal melakukan pembayaran!`);
+      }
+
+      return res.json({
+        status: true,
+        data: await Order.findByPk(id, { include: dataAssociation }),
       });
     } catch (error) {
       next(error);
