@@ -16,10 +16,14 @@ app.use(express.json());
 const concertRoutes = require("./routes/concert");
 const hallRoutes = require("./routes/hall");
 const ticketRoutes = require("./routes/ticket");
+const checkoutRoutes = require("./routes/checkout");
+const userRoutes = require("./routes/user");
 
 app.use("/api/concert", concertRoutes);
 app.use("/api/hall", hallRoutes);
 app.use("/api/ticket", ticketRoutes);
+app.use("/api/checkout", checkoutRoutes);
+app.use("/api/user", userRoutes);
 
 /**
  * Error middleware

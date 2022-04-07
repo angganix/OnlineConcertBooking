@@ -18,16 +18,6 @@ module.exports = {
       buktiBayar: {
         type: Sequelize.STRING,
       },
-      concert_id: {
-        type: Sequelize.INTEGER,
-        references: {
-          model: {
-            tableName: "Concerts",
-          },
-          key: "id",
-        },
-        allowNull: false,
-      },
       user_id: {
         type: Sequelize.INTEGER,
         references: {
