@@ -8,6 +8,17 @@ const formValidation = {
   title: { type: "string" },
 };
 
+const dataAssociation = [
+  {
+    association: "halls",
+    include: [
+      {
+        association: "tickets",
+      },
+    ],
+  },
+];
+
 module.exports = {
   list: async (req, res, next) => {
     try {
@@ -20,16 +31,7 @@ module.exports = {
       const offset = (page - 1) * limit;
 
       const data = await Concert.findAndCountAll({
-        include: [
-          {
-            association: "halls",
-            include: [
-              {
-                association: "tickets",
-              },
-            ],
-          },
-        ],
+        include: dataAssociation,
         order: [[orderby, orderdir]],
         limit: Number(limit),
         offset: offset,
@@ -58,7 +60,7 @@ module.exports = {
       }
 
       const data = await Concert.findByPk(id, {
-        include: ["halls"],
+        include: dataAssociation,
       });
 
       if (!data) {
