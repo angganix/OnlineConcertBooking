@@ -16,7 +16,11 @@ app.use(cookieParser());
 /**
  * CORS Middleware
  */
-const whiteList = ["http://localhost:3000", "http://192.168.14.155:3000"];
+const whiteList = [
+  "http://localhost:3000",
+  "http://192.168.14.155:3000",
+  "http://teknix.my.id:3000",
+];
 const corsConfig = {
   origin: (origin, callback) => {
     if (whiteList.indexOf(origin) !== -1 || !origin) {
