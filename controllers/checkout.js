@@ -12,6 +12,12 @@ const dataAssociation = [
     association: "detail_orders",
     include: {
       association: "ticket",
+      include: {
+        association: "hall",
+        include: {
+          association: "concert",
+        },
+      },
     },
   },
   {
