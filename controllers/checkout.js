@@ -133,6 +133,8 @@ module.exports = {
         throw new Error("Failed insert data!");
       }
 
+      console.log(process.env);
+
       // setup payment data ke duitku API
       const detail_items = await Order.findByPk(data?.id, {
         include: dataAssociation,
