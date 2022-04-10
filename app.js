@@ -32,9 +32,7 @@ const corsConfig = {
   credentials: true,
 };
 
-if (process.env !== "production") {
-  app.use(cors(corsConfig));
-}
+app.use(cors(corsConfig));
 
 /**
  * App routes
