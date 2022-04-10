@@ -133,8 +133,6 @@ module.exports = {
         throw new Error("Failed insert data!");
       }
 
-      console.log(process.env);
-
       // setup payment data ke duitku API
       const detail_items = await Order.findByPk(data?.id, {
         include: dataAssociation,
@@ -157,11 +155,11 @@ module.exports = {
         }),
         email: data?.user?.email,
         returnUrl:
-          process.env !== "production"
+          process.env.NODE_ENV !== "production"
             ? "http://localhost:3000/account/order"
             : "http://teknix.my.id:3000/account/order",
         callbackUrl:
-          process.env !== "production"
+          process.env.NODE_ENV !== "production"
             ? "http://localhost:3000/account/order"
             : "http://teknix.my.id:3000/account/order",
       };
