@@ -2,10 +2,15 @@ const { Order, Ticket } = require("../models");
 const Validator = require("fastest-validator");
 const moment = require("moment");
 const formValidator = new Validator();
+const crypto = require("crypto");
+const axios = require("axios");
 
 const formValidation = {
   detail_orders: { type: "array", min: 1 },
 };
+
+const merchant_code = "D11839";
+const api_key = "1acb5e52557dc6c55d1d5be6500cc39e";
 
 const dataAssociation = [
   {
@@ -128,23 +133,91 @@ module.exports = {
         throw new Error("Failed insert data!");
       }
 
-      detail_orders.forEach((detail) => {
-        Ticket.update(
-          {
-            sold: true,
-          },
-          {
-            where: {
-              id: detail?.ticket_id,
-            },
-          }
-        );
+      // setup payment data ke duitku API
+      const detail_items = await Order.findByPk(data?.id, {
+        include: dataAssociation,
       });
+      const parsed_items = JSON.parse(
+        JSON.stringify(detail_items?.detail_orders)
+      );
+      const paymentData = {
+        paymentAmount: parsed_items?.reduce((acc, cur) => {
+          return (acc += cur?.ticket?.price);
+        }, 0),
+        merchantOrderId: `${data?.id}`,
+        productDetails: "Pembayaran ticket",
+        itemDetails: parsed_items?.map((detail) => {
+          return {
+            name: detail?.personName,
+            quantity: 1,
+            price: detail?.ticket?.price,
+          };
+        }),
+        email: data?.user?.email,
+        returnUrl:
+          process.env !== "production"
+            ? "http://localhost:3000/account/order"
+            : "http://teknix.my.id:3000/account/order",
+        callbackUrl:
+          process.env !== "production"
+            ? "http://localhost:3000/account/order"
+            : "http://teknix.my.id:3000/account/order",
+      };
 
-      return res.status(201).json({
-        status: true,
-        data: await Order.findByPk(data?.id, { include: dataAssociation }),
-      });
+      const serverTime = new Date().getTime();
+      const signatureHash = crypto.createHash("sha256");
+      const signatureData = signatureHash.update(
+        `${merchant_code}${serverTime}${api_key}`,
+        "utf-8"
+      );
+      const hashedSignature = signatureData.digest("hex");
+      const requestHeaders = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-duitku-signature": hashedSignature,
+        "x-duitku-timestamp": serverTime,
+        "x-duitku-merchantcode": merchant_code,
+      };
+
+      const paymentResult = await axios
+        .post(
+          "https://api-sandbox.duitku.com/api/merchant/createInvoice",
+          paymentData,
+          { headers: requestHeaders }
+        )
+        .then((result) => {
+          return result;
+        })
+        .catch((error) => {
+          return error;
+        });
+
+      if (paymentResult?.data) {
+        detail_orders.forEach((detail) => {
+          Ticket.update(
+            {
+              sold: true,
+            },
+            {
+              where: {
+                id: detail?.ticket_id,
+              },
+            }
+          );
+        });
+
+        return res.status(201).json({
+          status: true,
+          data: await Order.findByPk(data?.id, { include: dataAssociation }),
+          payment: paymentResult?.data,
+        });
+      } else {
+        console.log(paymentResult);
+        return res.status(400).json({
+          status: false,
+          error: "error payment",
+        });
+      }
     } catch (error) {
       next(error);
     }

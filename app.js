@@ -52,7 +52,6 @@ app.use("/api/hall", hallRoutes);
 app.use("/api/ticket", ticketRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/user", userRoutes);
-
 /**
  * Error middleware
  */
